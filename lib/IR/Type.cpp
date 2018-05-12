@@ -611,6 +611,19 @@ bool VectorType::isValidElementType(Type *ElemTy) {
 }
 
 //===----------------------------------------------------------------------===//
+//                         TileType Implementation
+//===----------------------------------------------------------------------===//
+TileType::TileType(Type *ElType, ArrayRef<uint64_t> Shapes): SequentialType(TileTyID, ElType, std::accumulate(Shapes.begin(), Shapes.end(), 1, std::multiplies<uint64_t>())){
+  Shapes.copy(getContext().pImpl->TypeAllocator).data();
+}
+
+TileType *TileType::create(Type *EltTy, ArrayRef<uint64_t> Shapes){
+  LLVMContextImpl *CImpl = EltTy->getContext().pImpl;
+  return  new (CImpl->TypeAllocator) TileType(EltTy, Shapes);
+}
+
+
+//===----------------------------------------------------------------------===//
 //                         PointerType Implementation
 //===----------------------------------------------------------------------===//
 

@@ -73,7 +73,11 @@ public:
     StructTyID,      ///< 13: Structures
     ArrayTyID,       ///< 14: Arrays
     PointerTyID,     ///< 15: Pointers
-    VectorTyID       ///< 16: SIMD 'packed' format, or other vector type
+    VectorTyID,      ///< 16: SIMD 'packed' format, or other vector type
+    TensorTyID,      ///< 17: Tensor
+    TileTyID,        ///< 17: Tile
+    GridTyID,        ///< 18: Grid
+    LayoutTyID,      ///< 19: Layout
   };
 
 private:

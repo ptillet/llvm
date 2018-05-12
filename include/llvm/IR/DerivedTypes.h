@@ -463,6 +463,16 @@ unsigned Type::getVectorNumElements() const {
   return cast<VectorType>(this)->getNumElements();
 }
 
+///// Class to represent tile types
+class TileType: public SequentialType{
+  TileType(Type* ElType, ArrayRef<uint64_t> Shapes);
+
+  uint64_t *Shapes;
+public:
+  static TileType *create(Type * ElementType, ArrayRef<uint64_t> Shapes);
+};
+
+
 /// Class to represent pointers.
 class PointerType : public Type {
   explicit PointerType(Type *ElType, unsigned AddrSpace);
