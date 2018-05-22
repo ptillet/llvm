@@ -39,25 +39,22 @@ int main(){
     llvm::IRBuilder<> builder(context);
 
     // Function
-    llvm::PointerType* ptr_t = llvm::Type::getInt32PtrTy(context, 1);
-    llvm::Type* off_t = llvm::Type::getInt32Ty(context);
     llvm::Type* int32_t = llvm::Type::getInt32Ty(context);
+    llvm::Type* tile_t = llvm::TileType::get(int32_t, 1);
+    llvm::Type* tensor_t = llvm::TensorType::get(tile_t);
+    llvm::Type* range_t = llvm::Type::getRangeTy(context);
 
-    llvm::FunctionType* prototype = llvm::FunctionType::get(llvm::Type::getVoidTy(context), std::vector<llvm::Type*>{ptr_t, off_t}, false);
+    llvm::FunctionType* prototype = llvm::FunctionType::get(llvm::Type::getVoidTy(context), std::vector<llvm::Type*>{tensor_t}, false);
     llvm::Function* F = llvm::Function::Create(prototype, llvm::Function::ExternalLinkage, "kernel", module.get());
     std::vector<llvm::Value*> arguments;
     std::transform(F->arg_begin(), F->arg_end(), std::back_inserter(arguments), [&](llvm::Argument& x){ return &x;});
-
-    llvm::Function* fn = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x);
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry", F);
     builder.SetInsertPoint(block);
-    llvm::Value* _1 = llvm::ConstantInt::get(int32_t, 1);
-    llvm::Value* _tid = builder.CreateSExt(builder.CreateCall(fn), int32_t);
-    llvm::Value* _arg = builder.CreatePtrToInt(arguments[0], int32_t);
-    llvm::Value* _ptr = builder.CreateAdd(_arg, _tid);
-    llvm::Value* _addr = builder.CreateIntToPtr(_ptr, ptr_t);
-    builder.CreateStore(_1, _addr);
+    llvm::Value* range = builder.CreateCall(llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::tlvm_read_range_x));
+    llvm::Value* x = builder.CreateCall(llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::tlvm_ld), {arguments[0], range});
+    std::cout << x->getType()->getTypeID() << std::endl;
     builder.CreateRet(NULL);
+
 
     // Set metadata
     llvm::Metadata *md_args[] = {

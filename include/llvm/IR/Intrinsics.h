@@ -100,7 +100,8 @@ namespace Intrinsic {
       Void, VarArg, MMX, Token, Metadata, Half, Float, Double,
       Integer, Vector, Pointer, Struct,
       Argument, ExtendArgument, TruncArgument, HalfVecArgument,
-      SameVecWidthArgument, PtrToArgument, PtrToElt, VecOfAnyPtrsToElt
+      SameVecWidthArgument, PtrToArgument, PtrToElt, VecOfAnyPtrsToElt,
+      Tensor, Range, Tile
     } Kind;
 
     union {

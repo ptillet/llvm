@@ -196,6 +196,11 @@ namespace llvm {
       FIRST_VALUETYPE = 1,     // This is always the beginning of the list.
       LAST_VALUETYPE =  114,   // This always remains at the end of the list.
 
+      // TLVM values
+      tensor        = 115,
+      range         = 116,
+      tile          = 117,
+
       // This is the current maximum for LAST_VALUETYPE.
       // MVT::MAX_ALLOWED_VALUETYPE is used for asserts and to size bit vectors
       // This value must be a multiple of 32.

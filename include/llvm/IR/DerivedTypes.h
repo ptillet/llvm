@@ -463,13 +463,26 @@ unsigned Type::getVectorNumElements() const {
   return cast<VectorType>(this)->getNumElements();
 }
 
-///// Class to represent tile types
-class TileType: public SequentialType{
-  TileType(Type* ElType, ArrayRef<uint64_t> Shapes);
+/// Class to represent tile types
+class TileType: public CompositeType{
+  TileType(Type* ElType, unsigned numDim);
 
-  uint64_t *Shapes;
+  Type *ContainedType;
+  unsigned NumDimensions;
+
 public:
-  static TileType *create(Type * ElementType, ArrayRef<uint64_t> Shapes);
+  static TileType *get(Type* ElType, unsigned NumDim);
+  static bool isValidElementType(Type *ElemTy);
+};
+
+class TensorType: public CompositeType{
+  TensorType(Type* TileTy);
+
+  Type* SubType;
+
+public:
+  static TensorType *get(Type *ElType);
+  static bool isValidElementType(Type *ElemTy);
 };
 
 

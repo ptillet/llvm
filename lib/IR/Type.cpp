@@ -169,6 +169,7 @@ Type *Type::getX86_FP80Ty(LLVMContext &C) { return &C.pImpl->X86_FP80Ty; }
 Type *Type::getFP128Ty(LLVMContext &C) { return &C.pImpl->FP128Ty; }
 Type *Type::getPPC_FP128Ty(LLVMContext &C) { return &C.pImpl->PPC_FP128Ty; }
 Type *Type::getX86_MMXTy(LLVMContext &C) { return &C.pImpl->X86_MMXTy; }
+Type *Type::getRangeTy(LLVMContext &C) { return &C.pImpl->RangeTy; }
 
 IntegerType *Type::getInt1Ty(LLVMContext &C) { return &C.pImpl->Int1Ty; }
 IntegerType *Type::getInt8Ty(LLVMContext &C) { return &C.pImpl->Int8Ty; }
@@ -613,15 +614,47 @@ bool VectorType::isValidElementType(Type *ElemTy) {
 //===----------------------------------------------------------------------===//
 //                         TileType Implementation
 //===----------------------------------------------------------------------===//
-TileType::TileType(Type *ElType, ArrayRef<uint64_t> Shapes): SequentialType(TileTyID, ElType, std::accumulate(Shapes.begin(), Shapes.end(), 1, std::multiplies<uint64_t>())){
-  Shapes.copy(getContext().pImpl->TypeAllocator).data();
+bool TileType::isValidElementType(Type *ElType) {
+  return ElType->isIntegerTy() || ElType->isFloatingPointTy();
 }
 
-TileType *TileType::create(Type *EltTy, ArrayRef<uint64_t> Shapes){
-  LLVMContextImpl *CImpl = EltTy->getContext().pImpl;
-  return  new (CImpl->TypeAllocator) TileType(EltTy, Shapes);
+TileType::TileType(Type* ElType, unsigned NumDim)
+  : CompositeType(ElType->getContext(), TileTyID),
+    ContainedType(ElType), NumDimensions(NumDim) { }
+
+TileType *TileType::get(Type *ElType, unsigned NumDim){
+  assert(isValidElementType(ElType) && "Invalid type for tile element!");
+
+  LLVMContextImpl *CImpl = ElType->getContext().pImpl;
+  TileType *&Entry = CImpl->TileTypes[std::make_pair(ElType, NumDim)];
+
+  if(!Entry)
+    Entry = new (CImpl->TypeAllocator) TileType(ElType, NumDim);
+  return Entry;
 }
 
+//===----------------------------------------------------------------------===//
+//                         TensorType Implementation
+//===----------------------------------------------------------------------===//
+
+bool TensorType::isValidElementType(Type *ElType) {
+  return ElType->isTileTy();
+}
+
+TensorType::TensorType(Type *ElType)
+  : CompositeType(ElType->getContext(), TensorTyID),
+    SubType(ElType) { }
+
+TensorType *TensorType::get(Type *ElType){
+  assert(isValidElementType(ElType) && "Invalid type for tensor tile!");
+
+  LLVMContextImpl *CImpl = ElType->getContext().pImpl;
+  TensorType *&Entry = CImpl->TensorTypes[ElType];
+
+  if(!Entry)
+    Entry = new (CImpl->TypeAllocator) TensorType(ElType);
+  return Entry;
+}
 
 //===----------------------------------------------------------------------===//
 //                         PointerType Implementation

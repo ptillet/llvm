@@ -593,6 +593,7 @@ static std::string getMangledTypeStr(Type* Ty) {
     case Type::FP128TyID:     Result += "f128";     break;
     case Type::PPC_FP128TyID: Result += "ppcf128";  break;
     case Type::X86_MMXTyID:   Result += "x86mmx";   break;
+    case Type::RangeTyID:Result += "range";    break;
     case Type::IntegerTyID:
       Result += "i" + utostr(cast<IntegerType>(Ty)->getBitWidth());
       break;
@@ -665,7 +666,10 @@ enum IIT_Info {
   IIT_V1024 = 37,
   IIT_STRUCT6 = 38,
   IIT_STRUCT7 = 39,
-  IIT_STRUCT8 = 40
+  IIT_STRUCT8 = 40,
+  IIT_TLVM_TENSOR = 41,
+  IIT_TLVM_RANGE = 42,
+  IIT_TLVM_TILE = 43
 };
 
 static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
@@ -753,6 +757,9 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
   case IIT_V1024:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 1024));
     DecodeIITType(NextElt, Infos, OutputTable);
+    return;
+  case IIT_TLVM_RANGE:
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Range, 0));
     return;
   case IIT_PTR:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Pointer, 0));
@@ -884,6 +891,10 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
   case IITDescriptor::Half: return Type::getHalfTy(Context);
   case IITDescriptor::Float: return Type::getFloatTy(Context);
   case IITDescriptor::Double: return Type::getDoubleTy(Context);
+
+//  case IITDescriptor::Tensor: return Type::getTensorTy(DecodeFixedType(Infos, Tys, Context), Context);
+  case IITDescriptor::Range:  return Type::getRangeTy(Context);
+//  case IITDescriptor::Tile:   return Type::getTileTy(DecodeFixedType(Infos, Tys, Context),Context);
 
   case IITDescriptor::Integer:
     return IntegerType::get(Context, D.Integer_Width);
@@ -1027,6 +1038,7 @@ bool Intrinsic::matchIntrinsicType(Type *Ty, ArrayRef<Intrinsic::IITDescriptor> 
     case IITDescriptor::Float: return !Ty->isFloatTy();
     case IITDescriptor::Double: return !Ty->isDoubleTy();
     case IITDescriptor::Integer: return !Ty->isIntegerTy(D.Integer_Width);
+    case IITDescriptor::Range:  return !Ty->isRangeTy();
     case IITDescriptor::Vector: {
       VectorType *VT = dyn_cast<VectorType>(Ty);
       return !VT || VT->getNumElements() != D.Vector_Width ||

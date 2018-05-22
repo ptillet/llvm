@@ -217,7 +217,10 @@ enum IIT_Info {
   IIT_V1024 = 37,
   IIT_STRUCT6 = 38,
   IIT_STRUCT7 = 39,
-  IIT_STRUCT8 = 40
+  IIT_STRUCT8 = 40,
+  IIT_TENSOR = 41,
+  IIT_RANGE = 42,
+  IIT_TILE = 43
 };
 
 static void EncodeFixedValueType(MVT::SimpleValueType VT,
@@ -247,6 +250,8 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
   case MVT::Other: return Sig.push_back(IIT_EMPTYSTRUCT);
   // MVT::isVoid is used to represent varargs here.
   case MVT::isVoid: return Sig.push_back(IIT_VARARG);
+  // TLVM types
+  case MVT::range: return Sig.push_back(IIT_RANGE);
   }
 }
 
@@ -300,6 +305,7 @@ static void EncodeFixedType(Record *R, std::vector<unsigned char> &ArgCodes,
   case MVT::vAny: ++Tmp;    LLVM_FALLTHROUGH;
   case MVT::fAny: ++Tmp;    LLVM_FALLTHROUGH;
   case MVT::iAny: ++Tmp;    LLVM_FALLTHROUGH;
+  case MVT::tile: ++Tmp;    LLVM_FALLTHROUGH;
   case MVT::Any: {
     // If this is an "any" valuetype, then the type is the type of the next
     // type in the list specified to getIntrinsic().
@@ -326,6 +332,11 @@ static void EncodeFixedType(Record *R, std::vector<unsigned char> &ArgCodes,
       Sig.push_back(IIT_PTR);
     }
     return EncodeFixedType(R->getValueAsDef("ElTy"), ArgCodes, Sig);
+  }
+
+  case MVT::tensor: {
+    Sig.push_back(IIT_TENSOR);
+    return EncodeFixedType(R->getValueAsDef("TileTy"), ArgCodes, Sig);
   }
   }
 

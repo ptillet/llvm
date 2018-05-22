@@ -149,6 +149,11 @@ def ExceptRef: ValueType<0, 113>;   // WebAssembly's except_ref type
 def token  : ValueType<0  , 248>;   // TokenTy
 def MetadataVT: ValueType<0, 249>;  // Metadata
 
+// TLVM values
+def tensor : ValueType<0, 115>;      // Tensor
+def range : ValueType<0, 116>;      // Tensor range
+def tile : ValueType<0, 117>;      // Tensor tile
+
 // Pseudo valuetype mapped to the current pointer size to any address space.
 // Should only be used in TableGen.
 def iPTRAny   : ValueType<0, 250>;

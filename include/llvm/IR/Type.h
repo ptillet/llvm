@@ -75,9 +75,8 @@ public:
     PointerTyID,     ///< 15: Pointers
     VectorTyID,      ///< 16: SIMD 'packed' format, or other vector type
     TensorTyID,      ///< 17: Tensor
-    TileTyID,        ///< 17: Tile
-    GridTyID,        ///< 18: Grid
-    LayoutTyID,      ///< 19: Layout
+    TileTyID,        ///< 18: Tile
+    RangeTyID        ///< 19: Range
   };
 
 private:
@@ -229,6 +228,15 @@ public:
 
   /// True if this is an instance of VectorType.
   bool isVectorTy() const { return getTypeID() == VectorTyID; }
+
+  /// True if this is an instance of RangeType.
+  bool isRangeTy() const { return getTypeID() == RangeTyID; }
+
+  /// True if this is an instance of TensorType
+  bool isTensorTy() const { return getTypeID() == TensorTyID; }
+
+  /// True if this is an instance of TensorType
+  bool isTileTy() const { return getTypeID() == TileTyID; }
 
   /// Return true if this type could be converted with a lossless BitCast to
   /// type 'Ty'. For example, i8* to i32*. BitCasts are valid for types of the
@@ -404,6 +412,7 @@ public:
   static Type *getPPC_FP128Ty(LLVMContext &C);
   static Type *getX86_MMXTy(LLVMContext &C);
   static Type *getTokenTy(LLVMContext &C);
+  static Type *getRangeTy(LLVMContext &C);
   static IntegerType *getIntNTy(LLVMContext &C, unsigned N);
   static IntegerType *getInt1Ty(LLVMContext &C);
   static IntegerType *getInt8Ty(LLVMContext &C);
