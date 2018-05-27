@@ -134,7 +134,10 @@ typedef enum {
   LLVMCatchRet       = 62,
   LLVMCatchPad       = 63,
   LLVMCleanupPad     = 64,
-  LLVMCatchSwitch    = 65
+  LLVMCatchSwitch    = 65,
+  
+  /* Tensor Operators */
+  LLVMOffsetSlice    = 66
 } LLVMOpcode;
 
 typedef enum {
@@ -154,7 +157,10 @@ typedef enum {
   LLVMVectorTypeKind,      /**< SIMD 'packed' format, or other vector type */
   LLVMMetadataTypeKind,    /**< Metadata */
   LLVMX86_MMXTypeKind,     /**< X86 MMX */
-  LLVMTokenTypeKind        /**< Tokens */
+  LLVMTokenTypeKind,       /**< Tokens */
+  LLVMSliceTypeKind,       /**< TLVM Slice */
+  LLVMTensorTypeKind,      /**< TLVM Tensor */
+  LLVMTileTypeKind         /**< TLVM Tile */
 } LLVMTypeKind;
 
 typedef enum {
@@ -268,6 +274,7 @@ typedef enum {
   LLVMConstantFPValueKind,
   LLVMConstantPointerNullValueKind,
   LLVMConstantTokenNoneValueKind,
+  LLVMConstantSliceValueKind,
 
   LLVMMetadataAsValueValueKind,
   LLVMInlineAsmValueKind,

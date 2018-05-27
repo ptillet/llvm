@@ -51,8 +51,8 @@ int main(){
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry", F);
     builder.SetInsertPoint(block);
     llvm::Value* range = builder.CreateCall(llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::tlvm_read_range_x));
-    llvm::Value* x = builder.CreateCall(llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::tlvm_ld), {arguments[0], range});
-    std::cout << x->getType()->getTypeID() << std::endl;
+    llvm::Value* x = builder.CreateLoad(arguments[0]);
+    std::cout << range->getType()->getTypeID() << std::endl;
     builder.CreateRet(NULL);
 
 

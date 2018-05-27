@@ -299,6 +299,11 @@ private:
 };
 
 //===----------------------------------------------------------------------===//
+//                                LoadTensorInst Class
+//===----------------------------------------------------------------------===//
+
+
+//===----------------------------------------------------------------------===//
 //                                StoreInst Class
 //===----------------------------------------------------------------------===//
 
@@ -5050,6 +5055,32 @@ public:
   /// Returns the address space of the result.
   unsigned getDestAddressSpace() const {
     return getType()->getPointerAddressSpace();
+  }
+};
+
+//===----------------------------------------------------------------------===//
+//                                OffsetSliceInst Class
+//===----------------------------------------------------------------------===//
+/// This class represents the addition of an offset to a tensor slice
+class OffsetSliceInst : public BinaryOperator {
+protected:
+  friend class Instruction;
+
+  OffsetSliceInst *cloneImpl() const;
+
+public:
+  OffsetSliceInst(
+    Value * Slice,                      ///< The slice to be offset
+    Value * Offset,                     ///< The offset)
+    const Twine &NameStr = "",          ///< A name for the new instruction
+    Instruction *InsertBefore = nullptr ///< Where to insert the new instruction
+  );
+
+  static bool classof(const Instruction *I) {
+    return I->getOpcode() == OffsetSlice;
+  }
+  static bool classof(const Value *V) {
+    return isa<Instruction>(V) && classof(cast<Instruction>(V));
   }
 };
 

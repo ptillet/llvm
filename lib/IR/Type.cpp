@@ -169,7 +169,6 @@ Type *Type::getX86_FP80Ty(LLVMContext &C) { return &C.pImpl->X86_FP80Ty; }
 Type *Type::getFP128Ty(LLVMContext &C) { return &C.pImpl->FP128Ty; }
 Type *Type::getPPC_FP128Ty(LLVMContext &C) { return &C.pImpl->PPC_FP128Ty; }
 Type *Type::getX86_MMXTy(LLVMContext &C) { return &C.pImpl->X86_MMXTy; }
-Type *Type::getRangeTy(LLVMContext &C) { return &C.pImpl->RangeTy; }
 
 IntegerType *Type::getInt1Ty(LLVMContext &C) { return &C.pImpl->Int1Ty; }
 IntegerType *Type::getInt8Ty(LLVMContext &C) { return &C.pImpl->Int8Ty; }
@@ -618,18 +617,19 @@ bool TileType::isValidElementType(Type *ElType) {
   return ElType->isIntegerTy() || ElType->isFloatingPointTy();
 }
 
-TileType::TileType(Type* ElType, unsigned NumDim)
+TileType::TileType(Type* ElType, ArrayRef<Constant*> Dims)
   : CompositeType(ElType->getContext(), TileTyID),
-    ContainedType(ElType), NumDimensions(NumDim) { }
+    ContainedType(ElType), NumDimensions(Dims.size()){
+  Dimensions = Dims.copy(getContext().pImpl->TypeAllocator).data();
+}
 
 TileType *TileType::get(Type *ElType, unsigned NumDim){
   assert(isValidElementType(ElType) && "Invalid type for tile element!");
 
-  LLVMContextImpl *CImpl = ElType->getContext().pImpl;
-  TileType *&Entry = CImpl->TileTypes[std::make_pair(ElType, NumDim)];
-
-  if(!Entry)
-    Entry = new (CImpl->TypeAllocator) TileType(ElType, NumDim);
+  LLVMContext &C = ElType->getContext();
+  Type* int8_t = Type::getInt8PtrTy(C);
+  SmallVector<Constant *, 4> Dims(NumDim, UndefValue::get(int8_t));
+  TileType *Entry = new (C.pImpl->TypeAllocator) TileType(ElType, Dims);
   return Entry;
 }
 
@@ -655,6 +655,27 @@ TensorType *TensorType::get(Type *ElType){
     Entry = new (CImpl->TypeAllocator) TensorType(ElType);
   return Entry;
 }
+
+
+//===----------------------------------------------------------------------===//
+//                         SliceType Implementation
+//===----------------------------------------------------------------------===//
+
+SliceType::SliceType(Constant *NumEl)
+  : Type(NumEl->getContext(), SliceTyID), NumElements(NumEl) { }
+
+
+SliceType *SliceType::get(Constant *NumElements){
+  assert(NumElements->getType()->isIntegerTy() && "Invalid type for slice size!");
+
+  LLVMContextImpl * CImpl = NumElements->getContext().pImpl;
+  SliceType *&Entry = CImpl->SliceTypes[NumElements];
+
+  if(!Entry)
+    Entry = new (CImpl->TypeAllocator) SliceType(NumElements);
+  return Entry;
+}
+
 
 //===----------------------------------------------------------------------===//
 //                         PointerType Implementation

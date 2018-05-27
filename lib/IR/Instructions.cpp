@@ -3560,6 +3560,12 @@ void IndirectBrInst::removeDestination(unsigned idx) {
 }
 
 //===----------------------------------------------------------------------===//
+//                        OffsetSlice Implementation
+//===----------------------------------------------------------------------===//
+
+
+
+//===----------------------------------------------------------------------===//
 //                           cloneImpl() implementations
 //===----------------------------------------------------------------------===//
 
@@ -3762,3 +3768,4 @@ UnreachableInst *UnreachableInst::cloneImpl() const {
   LLVMContext &Context = getContext();
   return new UnreachableInst(Context);
 }
+

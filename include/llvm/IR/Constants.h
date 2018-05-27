@@ -1294,6 +1294,38 @@ public:
   }
 };
 
+//===----------------------------------------------------------------------===//
+/// ConstantSlice - Tensor slice
+class ConstantSlice final: public Constant{
+  friend class Constant;
+  explicit ConstantSlice(Constant *Lower, Constant *Size);
+
+  Value *handleOperandChangeImpl(Value *From, Value *To);
+  void destroyConstantImpl();
+
+public:
+  static ConstantSlice *get(Constant *Lower, Constant *Size);
+
+  /// Transparently provide more efficient getOperand methods.
+  DECLARE_TRANSPARENT_OPERAND_ACCESSORS(Value);
+
+  Constant *getLower() const { return (Constant*)Op<0>().get(); }
+  Constant *getSize() const  { return (Constant*)Op<1>().get(); }
+
+  /// Methods for support type inquiry through isa, cast, and dyn_cast:
+  static bool classof(const Value *V) {
+    return V->getValueID() == ConstantSliceVal;
+  }
+};
+
+template <>
+struct OperandTraits<ConstantSlice> :
+  public FixedNumOperandTraits<ConstantSlice, 1> {
+};
+
+DEFINE_TRANSPARENT_OPERAND_ACCESSORS(ConstantSlice, Value)
+
+
 } // end namespace llvm
 
 #endif // LLVM_IR_CONSTANTS_H

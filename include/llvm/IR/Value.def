@@ -66,6 +66,7 @@ HANDLE_GLOBAL_VALUE(GlobalIFunc)
 HANDLE_GLOBAL_VALUE(GlobalVariable)
 HANDLE_CONSTANT(BlockAddress)
 HANDLE_CONSTANT(ConstantExpr)
+HANDLE_CONSTANT(ConstantSlice)
 
 // ConstantAggregate.
 HANDLE_CONSTANT(ConstantArray)

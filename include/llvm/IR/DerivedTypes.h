@@ -463,11 +463,14 @@ unsigned Type::getVectorNumElements() const {
   return cast<VectorType>(this)->getNumElements();
 }
 
-/// Class to represent tile types
-class TileType: public CompositeType{
-  TileType(Type* ElType, unsigned numDim);
+/// Class to represent tiles.
+class Constant;
 
-  Type *ContainedType;
+class TileType: public CompositeType{
+  TileType(Type* ElType, ArrayRef<llvm::Constant *> Dims);
+
+  Type * ContainedType;
+  Constant * const *Dimensions = nullptr;
   unsigned NumDimensions;
 
 public:
@@ -475,6 +478,7 @@ public:
   static bool isValidElementType(Type *ElemTy);
 };
 
+/// Class to represent tensors.
 class TensorType: public CompositeType{
   TensorType(Type* TileTy);
 
@@ -483,6 +487,18 @@ class TensorType: public CompositeType{
 public:
   static TensorType *get(Type *ElType);
   static bool isValidElementType(Type *ElemTy);
+};
+
+/// Class to represent ranges.
+class SliceType: public Type{
+  SliceType(Constant *NumElements);
+  Constant *NumElements;
+
+public:
+  Constant *getNumElements(){ return NumElements; }
+
+  /// This static method constructs a SliceType of the provided size
+  static SliceType *get(Constant *NumElements);
 };
 
 

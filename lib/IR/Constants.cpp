@@ -2944,3 +2944,47 @@ Instruction *ConstantExpr::getAsInstruction() {
     return BO;
   }
 }
+
+
+ConstantSlice::ConstantSlice(Constant *Low, Constant *Size)
+  : Constant(SliceType::get(Size), ConstantSliceVal, &Op<0>(), 2){
+  setOperand(0, Low);
+  setOperand(1, Size);
+}
+
+
+Value * ConstantSlice::handleOperandChangeImpl(Value *From, Value *To){
+  Constant * Lower = getLower();
+  Constant * Size = getSize();
+  LLVMContextImpl *CImpl = getContext().pImpl;
+
+  if(From == Lower)
+    Lower = cast<Constant>(To);
+  else{
+    assert(From == Size && "From does not match any operand");
+    Size = cast<Constant>(To);
+  }
+
+  ConstantSlice *&Entry = CImpl->ConstantSlices[std::make_pair(Lower, Size)];
+  if(Entry)
+    return Entry;
+
+  CImpl->ConstantSlices.erase(std::make_pair(getLower(), getSize()));
+  Entry = this;
+  setOperand(0, Lower);
+  setOperand(1, Size);
+  return nullptr;
+}
+
+void ConstantSlice::destroyConstantImpl(){
+  getContext().pImpl->ConstantSlices.erase(std::make_pair(getLower(), getSize()));
+}
+
+ConstantSlice * ConstantSlice::get(Constant *Lower, Constant *Size){
+  LLVMContextImpl *CImpl = Lower->getContext().pImpl;
+  ConstantSlice *&Entry = CImpl->ConstantSlices[std::make_pair(Lower, Size)];
+  if (!Entry)
+    Entry = new ConstantSlice(Lower, Size);
+  return Entry;
+}
+

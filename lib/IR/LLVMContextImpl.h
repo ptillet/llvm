@@ -1257,6 +1257,9 @@ public:
 
   ConstantUniqueMap<InlineAsm> InlineAsms;
 
+  DenseMap<std::pair<const Constant *, const Constant *>, ConstantSlice *>
+    ConstantSlices;
+
   ConstantInt *TheTrueVal = nullptr;
   ConstantInt *TheFalseVal = nullptr;
 
@@ -1265,7 +1268,6 @@ public:
   // Basic type instances.
   Type VoidTy, LabelTy, HalfTy, FloatTy, DoubleTy, MetadataTy, TokenTy;
   Type X86_FP80Ty, FP128Ty, PPC_FP128Ty, X86_MMXTy;
-  Type RangeTy;
   IntegerType Int1Ty, Int8Ty, Int16Ty, Int32Ty, Int64Ty, Int128Ty;
   
   /// TypeAllocator - All dynamically allocated types are allocated from this.
@@ -1280,7 +1282,8 @@ public:
   StructTypeSet AnonStructTypes;
   StringMap<StructType*> NamedStructTypes;
   unsigned NamedStructTypesUniqueID = 0;
-    
+
+  DenseMap<Constant*, SliceType*> SliceTypes;
   DenseMap<std::pair<Type *, uint64_t>, ArrayType*> ArrayTypes;
   DenseMap<std::pair<Type *, unsigned>, VectorType*> VectorTypes;
   DenseMap<std::pair<Type *, unsigned>, TileType*> TileTypes;

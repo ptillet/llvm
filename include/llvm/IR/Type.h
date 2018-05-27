@@ -76,7 +76,7 @@ public:
     VectorTyID,      ///< 16: SIMD 'packed' format, or other vector type
     TensorTyID,      ///< 17: Tensor
     TileTyID,        ///< 18: Tile
-    RangeTyID        ///< 19: Range
+    SliceTyID        ///< 19: Slice
   };
 
 private:
@@ -229,8 +229,8 @@ public:
   /// True if this is an instance of VectorType.
   bool isVectorTy() const { return getTypeID() == VectorTyID; }
 
-  /// True if this is an instance of RangeType.
-  bool isRangeTy() const { return getTypeID() == RangeTyID; }
+  /// True if this is an instance of SliceType.
+  bool isSliceTy() const { return getTypeID() == SliceTyID; }
 
   /// True if this is an instance of TensorType
   bool isTensorTy() const { return getTypeID() == TensorTyID; }
@@ -412,7 +412,7 @@ public:
   static Type *getPPC_FP128Ty(LLVMContext &C);
   static Type *getX86_MMXTy(LLVMContext &C);
   static Type *getTokenTy(LLVMContext &C);
-  static Type *getRangeTy(LLVMContext &C);
+  static Type *getSliceTy(LLVMContext &C);
   static IntegerType *getIntNTy(LLVMContext &C, unsigned N);
   static IntegerType *getInt1Ty(LLVMContext &C);
   static IntegerType *getInt8Ty(LLVMContext &C);

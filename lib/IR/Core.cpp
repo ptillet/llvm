@@ -389,6 +389,12 @@ LLVMTypeKind LLVMGetTypeKind(LLVMTypeRef Ty) {
     return LLVMX86_MMXTypeKind;
   case Type::TokenTyID:
     return LLVMTokenTypeKind;
+  case Type::SliceTyID:
+    return LLVMSliceTypeKind;
+  case Type::TensorTyID:
+    return LLVMTensorTypeKind;
+  case Type::TileTyID:
+    return LLVMTileTypeKind;
   }
   llvm_unreachable("Unhandled TypeID.");
 }
