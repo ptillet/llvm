@@ -38,21 +38,22 @@ int main(){
     auto module = llvm::make_unique<llvm::Module>("NVVM toy example", context);
     llvm::IRBuilder<> builder(context);
 
-    // Function
-    llvm::Type* int32_t = llvm::Type::getInt32Ty(context);
-    llvm::Type* tile_t = llvm::TileType::get(int32_t, 1);
-    llvm::Type* tensor_t = llvm::TensorType::get(tile_t);
-    llvm::Type* range_t = llvm::Type::getRangeTy(context);
+    // Types
+    llvm::IntegerType* int32_t = llvm::Type::getInt32Ty(context);
+//    llvm::Constant *N = llvm::UndefValue::get(int32_t);
+//    llvm::Type* tile_t = llvm::TileType::get(int32_t, {N});
+    llvm::Type* tensor_t = llvm::TensorType::get(int32_t, 1);
 
+    // Function
     llvm::FunctionType* prototype = llvm::FunctionType::get(llvm::Type::getVoidTy(context), std::vector<llvm::Type*>{tensor_t}, false);
     llvm::Function* F = llvm::Function::Create(prototype, llvm::Function::ExternalLinkage, "kernel", module.get());
     std::vector<llvm::Value*> arguments;
     std::transform(F->arg_begin(), F->arg_end(), std::back_inserter(arguments), [&](llvm::Argument& x){ return &x;});
+    // First basic block
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry", F);
     builder.SetInsertPoint(block);
-    llvm::Value* range = builder.CreateCall(llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::tlvm_read_range_x));
-    llvm::Value* x = builder.CreateLoad(arguments[0]);
-    std::cout << range->getType()->getTypeID() << std::endl;
+    llvm::Value* idx = llvm::ConstantSlice::get(int32_t, 0, 16);
+    llvm::Value* x = builder.CreateLoadTensor(arguments[0], {idx});
     builder.CreateRet(NULL);
 
 

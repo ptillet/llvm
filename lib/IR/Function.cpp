@@ -665,7 +665,10 @@ enum IIT_Info {
   IIT_V1024 = 37,
   IIT_STRUCT6 = 38,
   IIT_STRUCT7 = 39,
-  IIT_STRUCT8 = 40
+  IIT_STRUCT8 = 40,
+  IIT_TENSOR = 41,
+  IIT_SLICE = 42,
+  IIT_TILE = 43
 };
 
 static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
@@ -674,7 +677,6 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
 
   IIT_Info Info = IIT_Info(Infos[NextElt++]);
   unsigned StructElts = 2;
-
   switch (Info) {
   case IIT_Done:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Void, 0));
@@ -753,6 +755,9 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
   case IIT_V1024:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 1024));
     DecodeIITType(NextElt, Infos, OutputTable);
+    return;
+  case IIT_SLICE:
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Slice, 0));
     return;
   case IIT_PTR:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Pointer, 0));
@@ -871,9 +876,9 @@ void Intrinsic::getIntrinsicInfoTableEntries(ID id,
 static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
                              ArrayRef<Type*> Tys, LLVMContext &Context) {
   using namespace Intrinsic;
-
   IITDescriptor D = Infos.front();
   Infos = Infos.slice(1);
+//  printf("shy0 %d %d %d %d\n", D.Kind, IITDescriptor::Tensor, IITDescriptor::Range, IITDescriptor::Argument);
 
   switch (D.Kind) {
   case IITDescriptor::Void: return Type::getVoidTy(Context);
@@ -884,6 +889,12 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
   case IITDescriptor::Half: return Type::getHalfTy(Context);
   case IITDescriptor::Float: return Type::getFloatTy(Context);
   case IITDescriptor::Double: return Type::getDoubleTy(Context);
+
+  case IITDescriptor::Slice:
+    return Type::getRangeTy(Context);
+  case IITDescriptor::Tile:
+    return TileType::get(DecodeFixedType(Infos, Tys, Context), D.Tile_NumDimensions);
+
 
   case IITDescriptor::Integer:
     return IntegerType::get(Context, D.Integer_Width);
@@ -1027,6 +1038,10 @@ bool Intrinsic::matchIntrinsicType(Type *Ty, ArrayRef<Intrinsic::IITDescriptor> 
     case IITDescriptor::Float: return !Ty->isFloatTy();
     case IITDescriptor::Double: return !Ty->isDoubleTy();
     case IITDescriptor::Integer: return !Ty->isIntegerTy(D.Integer_Width);
+    case IITDescriptor::Slice:  return !Ty->isSliceTy();
+    case IITDescriptor::Tensor:  return !Ty->isTensorTy();
+    case IITDescriptor::Tile:  return !Ty->isTileTy();
+
     case IITDescriptor::Vector: {
       VectorType *VT = dyn_cast<VectorType>(Ty);
       return !VT || VT->getNumElements() != D.Vector_Width ||

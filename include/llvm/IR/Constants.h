@@ -1304,6 +1304,7 @@ class ConstantSlice final: public Constant{
   void destroyConstantImpl();
 
 public:
+  static ConstantSlice *get(IntegerType* Ty, uint64_t Lower, uint64_t Size);
   static ConstantSlice *get(Constant *Lower, Constant *Size);
 
   /// Transparently provide more efficient getOperand methods.

@@ -467,26 +467,27 @@ unsigned Type::getVectorNumElements() const {
 class Constant;
 
 class TileType: public CompositeType{
-  TileType(Type* ElType, ArrayRef<llvm::Constant *> Dims);
+  TileType(Type* ElementType, ArrayRef<llvm::Constant *> Dims);
 
   Type * ContainedType;
   Constant * const *Dimensions = nullptr;
   unsigned NumDimensions;
 
 public:
-  static TileType *get(Type* ElType, unsigned NumDim);
-  static bool isValidElementType(Type *ElemTy);
+  static TileType *get(Type* ElementType, ArrayRef<llvm::Constant *> Dims);
+  static bool isValidElementType(Type *ElementType);
 };
 
 /// Class to represent tensors.
 class TensorType: public CompositeType{
-  TensorType(Type* TileTy);
+  TensorType(Type* ElementType, unsigned NumDimensions);
 
-  Type* SubType;
+  Type* ContainedType;
+  unsigned NumDimensions;
 
 public:
-  static TensorType *get(Type *ElType);
-  static bool isValidElementType(Type *ElemTy);
+  static TensorType *get(Type *ElementType, unsigned NumDimensions);
+  static bool isValidElementType(Type *ElementType);
 };
 
 /// Class to represent ranges.

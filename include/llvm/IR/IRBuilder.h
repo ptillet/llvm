@@ -1232,13 +1232,6 @@ public:
   }
 
   //===--------------------------------------------------------------------===//
-  // Instruction creation methods: Tensor Instructions
-  //===--------------------------------------------------------------------===//
-  Value *CreateOffsetSlice(Value* V, Value* Offset, const Twine &Name = ""){
-    return Insert(new OffsetSliceInst(V, Offset, Name));
-  }
-
-  //===--------------------------------------------------------------------===//
   // Instruction creation methods: Memory Instructions
   //===--------------------------------------------------------------------===//
 

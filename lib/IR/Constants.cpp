@@ -2946,6 +2946,9 @@ Instruction *ConstantExpr::getAsInstruction() {
 }
 
 
+//===----------------------------------------------------------------------===//
+//                ConstantSlice implementations
+
 ConstantSlice::ConstantSlice(Constant *Low, Constant *Size)
   : Constant(SliceType::get(Size), ConstantSliceVal, &Op<0>(), 2){
   setOperand(0, Low);
@@ -2987,4 +2990,9 @@ ConstantSlice * ConstantSlice::get(Constant *Lower, Constant *Size){
     Entry = new ConstantSlice(Lower, Size);
   return Entry;
 }
+
+ConstantSlice * ConstantSlice::get(IntegerType* Ty, uint64_t Lower, uint64_t Size){
+  return get(ConstantInt::get(Ty, Lower), ConstantInt::get(Ty, Size));
+}
+
 

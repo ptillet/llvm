@@ -134,10 +134,7 @@ typedef enum {
   LLVMCatchRet       = 62,
   LLVMCatchPad       = 63,
   LLVMCleanupPad     = 64,
-  LLVMCatchSwitch    = 65,
-  
-  /* Tensor Operators */
-  LLVMOffsetSlice    = 66
+  LLVMCatchSwitch    = 65
 } LLVMOpcode;
 
 typedef enum {

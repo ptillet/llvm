@@ -623,12 +623,10 @@ TileType::TileType(Type* ElType, ArrayRef<Constant*> Dims)
   Dimensions = Dims.copy(getContext().pImpl->TypeAllocator).data();
 }
 
-TileType *TileType::get(Type *ElType, unsigned NumDim){
+TileType *TileType::get(Type *ElType, ArrayRef<Constant*> Dims){
   assert(isValidElementType(ElType) && "Invalid type for tile element!");
 
   LLVMContext &C = ElType->getContext();
-  Type* int8_t = Type::getInt8PtrTy(C);
-  SmallVector<Constant *, 4> Dims(NumDim, UndefValue::get(int8_t));
   TileType *Entry = new (C.pImpl->TypeAllocator) TileType(ElType, Dims);
   return Entry;
 }
@@ -638,21 +636,21 @@ TileType *TileType::get(Type *ElType, unsigned NumDim){
 //===----------------------------------------------------------------------===//
 
 bool TensorType::isValidElementType(Type *ElType) {
-  return ElType->isTileTy();
+  return ElType->isIntegerTy() || ElType->isFloatingPointTy();
 }
 
-TensorType::TensorType(Type *ElType)
+TensorType::TensorType(Type *ElType, unsigned NumDims)
   : CompositeType(ElType->getContext(), TensorTyID),
-    SubType(ElType) { }
+    ContainedType(ElType), NumDimensions(NumDims) {
+}
 
-TensorType *TensorType::get(Type *ElType){
+TensorType *TensorType::get(Type *ElType, unsigned NumDims){
   assert(isValidElementType(ElType) && "Invalid type for tensor tile!");
 
   LLVMContextImpl *CImpl = ElType->getContext().pImpl;
   TensorType *&Entry = CImpl->TensorTypes[ElType];
-
   if(!Entry)
-    Entry = new (CImpl->TypeAllocator) TensorType(ElType);
+    Entry = new (CImpl->TypeAllocator) TensorType(ElType, NumDims);
   return Entry;
 }
 
