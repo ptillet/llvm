@@ -41,7 +41,8 @@ int main(){
     // Types
     llvm::IntegerType* int32_t = llvm::Type::getInt32Ty(context);
 //    llvm::Constant *N = llvm::UndefValue::get(int32_t);
-//    llvm::Type* tile_t = llvm::TileType::get(int32_t, {N});
+    llvm::Constant *N = llvm::ConstantDataArray::getString(context, "N");
+    llvm::Type* tile_t = llvm::TileType::get(int32_t, {N});
     llvm::Type* tensor_t = llvm::TensorType::get(int32_t, 1);
 
     // Function
@@ -52,8 +53,7 @@ int main(){
     // First basic block
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry", F);
     builder.SetInsertPoint(block);
-    llvm::Value* idx = llvm::ConstantSlice::get(int32_t, 0, 16);
-    llvm::Value* x = builder.CreateLoadTensor(arguments[0], {idx});
+//    llvm::Value* idx = llvm::ConstantSlice::get(int32_t, 0, 16);
     builder.CreateRet(NULL);
 
 

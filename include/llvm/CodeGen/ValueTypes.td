@@ -141,6 +141,9 @@ def nxv2f64  : ValueType<128, 106>; // n x  2 x f64 vector value
 def nxv4f64  : ValueType<256, 107>; // n x  4 x f64 vector value
 def nxv8f64  : ValueType<512, 108>; // n x  8 x f64 vector value
 
+def slice   : ValueType<0, 115>;    // TLVM slice value
+def tile    : ValueType<0, 116>;    // TLVM tile value
+
 def x86mmx : ValueType<64 , 109>;   // X86 MMX value
 def FlagVT : ValueType<0  , 110>;   // Pre-RA sched glue
 def isVoid : ValueType<0  , 111>;   // Produces no value

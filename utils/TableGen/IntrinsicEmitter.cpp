@@ -217,7 +217,10 @@ enum IIT_Info {
   IIT_V1024 = 37,
   IIT_STRUCT6 = 38,
   IIT_STRUCT7 = 39,
-  IIT_STRUCT8 = 40
+  IIT_STRUCT8 = 40,
+  IIT_SLICE = 41,
+  IIT_TILE = 42,
+  IIT_ARRAY = 43
 };
 
 static void EncodeFixedValueType(MVT::SimpleValueType VT,
@@ -243,6 +246,7 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
   case MVT::token: return Sig.push_back(IIT_TOKEN);
   case MVT::Metadata: return Sig.push_back(IIT_METADATA);
   case MVT::x86mmx: return Sig.push_back(IIT_MMX);
+  case MVT::slice:  return Sig.push_back(IIT_SLICE);
   // MVT::OtherVT is used to mean the empty struct type here.
   case MVT::Other: return Sig.push_back(IIT_EMPTYSTRUCT);
   // MVT::isVoid is used to represent varargs here.
@@ -311,6 +315,12 @@ static void EncodeFixedType(Record *R, std::vector<unsigned char> &ArgCodes,
 
     // Encode what sort of argument it must be in the low 3 bits of the ArgNo.
     return Sig.push_back((ArgNo << 3) | Tmp);
+  }
+
+  case MVT::tile: {
+    Sig.push_back(VT==IIT_TILE);
+    Sig.push_back(R->getValueAsInt("NDim"));
+    return EncodeFixedType(R->getValueAsDef("ElTy"), ArgCodes, Sig);
   }
 
   case MVT::iPTR: {

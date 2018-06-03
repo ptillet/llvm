@@ -666,9 +666,8 @@ enum IIT_Info {
   IIT_STRUCT6 = 38,
   IIT_STRUCT7 = 39,
   IIT_STRUCT8 = 40,
-  IIT_TENSOR = 41,
-  IIT_SLICE = 42,
-  IIT_TILE = 43
+  IIT_SLICE = 41,
+  IIT_TILE = 42
 };
 
 static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
@@ -878,7 +877,6 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
   using namespace Intrinsic;
   IITDescriptor D = Infos.front();
   Infos = Infos.slice(1);
-//  printf("shy0 %d %d %d %d\n", D.Kind, IITDescriptor::Tensor, IITDescriptor::Range, IITDescriptor::Argument);
 
   switch (D.Kind) {
   case IITDescriptor::Void: return Type::getVoidTy(Context);
@@ -889,11 +887,7 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
   case IITDescriptor::Half: return Type::getHalfTy(Context);
   case IITDescriptor::Float: return Type::getFloatTy(Context);
   case IITDescriptor::Double: return Type::getDoubleTy(Context);
-
-  case IITDescriptor::Slice:
-    return Type::getRangeTy(Context);
-  case IITDescriptor::Tile:
-    return TileType::get(DecodeFixedType(Infos, Tys, Context), D.Tile_NumDimensions);
+  case IITDescriptor::Slice:  return Type::getSliceTy(Context);
 
 
   case IITDescriptor::Integer:
@@ -1039,14 +1033,19 @@ bool Intrinsic::matchIntrinsicType(Type *Ty, ArrayRef<Intrinsic::IITDescriptor> 
     case IITDescriptor::Double: return !Ty->isDoubleTy();
     case IITDescriptor::Integer: return !Ty->isIntegerTy(D.Integer_Width);
     case IITDescriptor::Slice:  return !Ty->isSliceTy();
-    case IITDescriptor::Tensor:  return !Ty->isTensorTy();
-    case IITDescriptor::Tile:  return !Ty->isTileTy();
 
     case IITDescriptor::Vector: {
       VectorType *VT = dyn_cast<VectorType>(Ty);
       return !VT || VT->getNumElements() != D.Vector_Width ||
              matchIntrinsicType(VT->getElementType(), Infos, ArgTys);
     }
+
+    case IITDescriptor::Tile: {
+      TileType *TT = dyn_cast<TileType>(Ty);
+      return !TT ||
+             matchIntrinsicType(TT->getElementType(), Infos, ArgTys);
+    }
+
     case IITDescriptor::Pointer: {
       PointerType *PT = dyn_cast<PointerType>(Ty);
       return !PT || PT->getAddressSpace() != D.Pointer_AddressSpace ||

@@ -101,7 +101,7 @@ namespace Intrinsic {
       Integer, Vector, Pointer, Struct,
       Argument, ExtendArgument, TruncArgument, HalfVecArgument,
       SameVecWidthArgument, PtrToArgument, PtrToElt, VecOfAnyPtrsToElt,
-      Tensor, Slice, Tile
+      Slice, Tile
     } Kind;
 
     union {
@@ -111,7 +111,7 @@ namespace Intrinsic {
       unsigned Pointer_AddressSpace;
       unsigned Struct_NumElements;
       unsigned Argument_Info;
-      unsigned Tile_NumDimensions;
+      unsigned Tile_NDim;
     };
 
     enum ArgKind {

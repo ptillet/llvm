@@ -660,7 +660,7 @@ TensorType *TensorType::get(Type *ElType, unsigned NumDims){
 //===----------------------------------------------------------------------===//
 
 SliceType::SliceType(Constant *NumEl)
-  : Type(NumEl->getContext(), SliceTyID), NumElements(NumEl) { }
+  : Type(NumEl->getContext(), SliceTyID), NumElements(NumEl){ }
 
 
 SliceType *SliceType::get(Constant *NumElements){
