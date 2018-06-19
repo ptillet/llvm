@@ -592,6 +592,9 @@ inline uint64_t DataLayout::getTypeSizeInBits(Type *Ty) const {
     VectorType *VTy = cast<VectorType>(Ty);
     return VTy->getNumElements() * getTypeSizeInBits(VTy->getElementType());
   }
+  // Size of the tile types is Target-dependent
+  case Type::TileTyID:
+    return getPointerSizeInBits(0);
   default:
     llvm_unreachable("DataLayout::getTypeSizeInBits(): Unsupported type");
   }

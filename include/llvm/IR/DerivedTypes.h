@@ -467,41 +467,27 @@ unsigned Type::getVectorNumElements() const {
 class Constant;
 
 class TileType: public CompositeType{
-  TileType(Type* ElementType, ArrayRef<llvm::Constant *> Dims);
+  TileType(Type* ElementType, unsigned NumDims);
 
   Type * ContainedType;
-  Constant * const *Dimensions = nullptr;
   unsigned NumDimensions;
 
 public:
-  static TileType *get(Type* ElementType, ArrayRef<llvm::Constant *> Dims);
+  static TileType *get(Type* ElementType, unsigned NumDims);
   static bool isValidElementType(Type *ElementType);
+
+  unsigned getNumDimensions() const { return NumDimensions; }
+  Type *getElementType() const { return ContainedType; }
+
+  /// Methods for support type inquiry through isa, cast, and dyn_cast.
+  static bool classof(const Type *T) {
+    return T->getTypeID() == TileTyID;
+  }
 };
 
-/// Class to represent tensors.
-class TensorType: public CompositeType{
-  TensorType(Type* ElementType, unsigned NumDimensions);
-
-  Type* ContainedType;
-  unsigned NumDimensions;
-
-public:
-  static TensorType *get(Type *ElementType, unsigned NumDimensions);
-  static bool isValidElementType(Type *ElementType);
-};
-
-/// Class to represent ranges.
-class SliceType: public Type{
-  SliceType(Constant *NumElements);
-  Constant *NumElements;
-
-public:
-  Constant *getNumElements(){ return NumElements; }
-
-  /// This static method constructs a SliceType of the provided size
-  static SliceType *get(Constant *NumElements);
-};
-
+unsigned Type::getTileNumDimensions() const {
+  return cast<TileType>(this)->getNumDimensions();
+}
 
 /// Class to represent pointers.
 class PointerType : public Type {

@@ -40,20 +40,24 @@ int main(){
 
     // Types
     llvm::IntegerType* int32_t = llvm::Type::getInt32Ty(context);
-//    llvm::Constant *N = llvm::UndefValue::get(int32_t);
-    llvm::Constant *N = llvm::ConstantDataArray::getString(context, "N");
-    llvm::Type* tile_t = llvm::TileType::get(int32_t, {N});
-    llvm::Type* tensor_t = llvm::TensorType::get(int32_t, 1);
+    llvm::PointerType* int32_ptr_t = llvm::PointerType::get(int32_t, 0);
+    llvm::Type* tile_t = llvm::TileType::get(int32_t, 1);
+    llvm::PointerType* tile_ptr_t = llvm::PointerType::get(tile_t, 0);
+    llvm::Function* read_slice_x = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::tlvm_read_slice_x);
+    llvm::Function* gtp = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::tlvm_gtp_1d, {tile_ptr_t, int32_ptr_t});
 
     // Function
-    llvm::FunctionType* prototype = llvm::FunctionType::get(llvm::Type::getVoidTy(context), std::vector<llvm::Type*>{tensor_t}, false);
+    llvm::FunctionType* prototype = llvm::FunctionType::get(llvm::Type::getVoidTy(context), std::vector<llvm::Type*>{int32_ptr_t}, false);
     llvm::Function* F = llvm::Function::Create(prototype, llvm::Function::ExternalLinkage, "kernel", module.get());
     std::vector<llvm::Value*> arguments;
     std::transform(F->arg_begin(), F->arg_end(), std::back_inserter(arguments), [&](llvm::Argument& x){ return &x;});
     // First basic block
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry", F);
     builder.SetInsertPoint(block);
-//    llvm::Value* idx = llvm::ConstantSlice::get(int32_t, 0, 16);
+    llvm::Value* sx = builder.CreateCall(read_slice_x);
+    llvm::CallInst* ptr = builder.CreateCall(gtp, {arguments[0], sx});
+    llvm::Value* tile = builder.CreateLoad(ptr);
+    builder.CreateStore(tile, ptr);
     builder.CreateRet(NULL);
 
 
@@ -69,7 +73,7 @@ int main(){
     module->setTargetTriple("nvptx64-nvidia-cuda");
     auto target = llvm::TargetRegistry::lookupTarget(module->getTargetTriple(), error);
 
-    auto machine = target->createTargetMachine(module->getTargetTriple(), "sm_52", "", llvm::TargetOptions(), llvm::Reloc::Model());
+    llvm::TargetMachine *machine = target->createTargetMachine(module->getTargetTriple(), "sm_52", "", llvm::TargetOptions(), llvm::Reloc::Model());
     module->setDataLayout(machine->createDataLayout());
 
     // Emit

@@ -244,12 +244,15 @@ void NVPTXPassConfig::addIRPasses() {
   disablePass(&PatchableFunctionID);
   disablePass(&ShrinkWrapID);
 
+  // Add TLVM passes here to benefit from NVVM-specific processing
+  addPass(createTLVMBindLayoutPass());
+  addPass(createTLVMLowerTilesPass());
+
   // NVVMReflectPass is added in addEarlyAsPossiblePasses, so hopefully running
   // it here does nothing.  But since we need it for correctness when lowering
   // to NVPTX, run it here too, in case whoever built our pass pipeline didn't
   // call addEarlyAsPossiblePasses.
   addPass(createNVVMReflectPass());
-
   if (getOptLevel() != CodeGenOpt::None)
     addPass(createNVPTXImageOptimizerPass());
   addPass(createNVPTXAssignValidGlobalNamesPass());

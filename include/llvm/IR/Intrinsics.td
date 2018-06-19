@@ -142,6 +142,8 @@ class LLVMTileType<LLVMType elty, int ndim>
   int NDim = ndim;
 }
 
+class LLVMTileType1d<LLVMType elty>: LLVMTileType<elty, 1>;
+
 
 // Match the type of another intrinsic parameter.  Number is an index into the
 // list of overloaded types for the intrinsic, excluding all the fixed types.
@@ -260,6 +262,7 @@ def llvm_v4f64_ty      : LLVMType<v4f64>;    //  4 x double
 def llvm_v8f64_ty      : LLVMType<v8f64>;    //  8 x double
 
 def llvm_slice_ty      : LLVMType<slice>;    //  slice
+
 def llvm_vararg_ty     : LLVMType<isVoid>;   // this means vararg here
 
 //===----------------------------------------------------------------------===//

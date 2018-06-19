@@ -391,8 +391,6 @@ LLVMTypeKind LLVMGetTypeKind(LLVMTypeRef Ty) {
     return LLVMTokenTypeKind;
   case Type::SliceTyID:
     return LLVMSliceTypeKind;
-  case Type::TensorTyID:
-    return LLVMTensorTypeKind;
   case Type::TileTyID:
     return LLVMTileTypeKind;
   }

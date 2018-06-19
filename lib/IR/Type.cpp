@@ -151,6 +151,9 @@ bool Type::isSizedDerivedType(SmallPtrSetImpl<Type*> *Visited) const {
   if (auto *VTy = dyn_cast<VectorType>(this))
     return VTy->getElementType()->isSized(Visited);
 
+  if (auto *TTy = dyn_cast<TileType>(this))
+    return TTy->getElementType()->isSized(Visited);
+
   return cast<StructType>(this)->isSized(Visited);
 }
 
@@ -169,6 +172,7 @@ Type *Type::getX86_FP80Ty(LLVMContext &C) { return &C.pImpl->X86_FP80Ty; }
 Type *Type::getFP128Ty(LLVMContext &C) { return &C.pImpl->FP128Ty; }
 Type *Type::getPPC_FP128Ty(LLVMContext &C) { return &C.pImpl->PPC_FP128Ty; }
 Type *Type::getX86_MMXTy(LLVMContext &C) { return &C.pImpl->X86_MMXTy; }
+Type *Type::getSliceTy(LLVMContext &C) { return &C.pImpl->SliceTy; }
 
 IntegerType *Type::getInt1Ty(LLVMContext &C) { return &C.pImpl->Int1Ty; }
 IntegerType *Type::getInt8Ty(LLVMContext &C) { return &C.pImpl->Int8Ty; }
@@ -617,63 +621,21 @@ bool TileType::isValidElementType(Type *ElType) {
   return ElType->isIntegerTy() || ElType->isFloatingPointTy();
 }
 
-TileType::TileType(Type* ElType, ArrayRef<Constant*> Dims)
+TileType::TileType(Type* ElType, unsigned NumDims)
   : CompositeType(ElType->getContext(), TileTyID),
-    ContainedType(ElType), NumDimensions(Dims.size()){
-  Dimensions = Dims.copy(getContext().pImpl->TypeAllocator).data();
+    ContainedType(ElType), NumDimensions(NumDims){
+  ContainedTys = &ContainedType;
 }
 
-TileType *TileType::get(Type *ElType, ArrayRef<Constant*> Dims){
+TileType *TileType::get(Type *ElType, unsigned NumDims){
   assert(isValidElementType(ElType) && "Invalid type for tile element!");
 
-  LLVMContext &C = ElType->getContext();
-  TileType *Entry = new (C.pImpl->TypeAllocator) TileType(ElType, Dims);
-  return Entry;
-}
-
-//===----------------------------------------------------------------------===//
-//                         TensorType Implementation
-//===----------------------------------------------------------------------===//
-
-bool TensorType::isValidElementType(Type *ElType) {
-  return ElType->isIntegerTy() || ElType->isFloatingPointTy();
-}
-
-TensorType::TensorType(Type *ElType, unsigned NumDims)
-  : CompositeType(ElType->getContext(), TensorTyID),
-    ContainedType(ElType), NumDimensions(NumDims) {
-}
-
-TensorType *TensorType::get(Type *ElType, unsigned NumDims){
-  assert(isValidElementType(ElType) && "Invalid type for tensor tile!");
-
   LLVMContextImpl *CImpl = ElType->getContext().pImpl;
-  TensorType *&Entry = CImpl->TensorTypes[ElType];
+  TileType *& Entry = CImpl->TileTypes[std::make_pair(ElType, NumDims)];
   if(!Entry)
-    Entry = new (CImpl->TypeAllocator) TensorType(ElType, NumDims);
+    Entry = new (CImpl->TypeAllocator) TileType(ElType, NumDims);
   return Entry;
 }
-
-
-//===----------------------------------------------------------------------===//
-//                         SliceType Implementation
-//===----------------------------------------------------------------------===//
-
-SliceType::SliceType(Constant *NumEl)
-  : Type(NumEl->getContext(), SliceTyID), NumElements(NumEl){ }
-
-
-SliceType *SliceType::get(Constant *NumElements){
-  assert(NumElements->getType()->isIntegerTy() && "Invalid type for slice size!");
-
-  LLVMContextImpl * CImpl = NumElements->getContext().pImpl;
-  SliceType *&Entry = CImpl->SliceTypes[NumElements];
-
-  if(!Entry)
-    Entry = new (CImpl->TypeAllocator) SliceType(NumElements);
-  return Entry;
-}
-
 
 //===----------------------------------------------------------------------===//
 //                         PointerType Implementation
@@ -706,6 +668,7 @@ PointerType *Type::getPointerTo(unsigned addrs) const {
 }
 
 bool PointerType::isValidElementType(Type *ElemTy) {
+//  printf("%d\n", ElemTy->getTypeID());
   return !ElemTy->isVoidTy() && !ElemTy->isLabelTy() &&
          !ElemTy->isMetadataTy() && !ElemTy->isTokenTy();
 }

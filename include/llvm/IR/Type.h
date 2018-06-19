@@ -74,9 +74,8 @@ public:
     ArrayTyID,       ///< 14: Arrays
     PointerTyID,     ///< 15: Pointers
     VectorTyID,      ///< 16: SIMD 'packed' format, or other vector type
-    TensorTyID,      ///< 17: Tensor
-    TileTyID,        ///< 18: Tile
-    SliceTyID        ///< 19: Slice
+    TileTyID,        ///< 17: Tile
+    SliceTyID        ///< 18: Slice
   };
 
 private:
@@ -232,10 +231,7 @@ public:
   /// True if this is an instance of SliceType.
   bool isSliceTy() const { return getTypeID() == SliceTyID; }
 
-  /// True if this is an instance of TensorType
-  bool isTensorTy() const { return getTypeID() == TensorTyID; }
-
-  /// True if this is an instance of TensorType
+  /// True if this is an instance of TileType
   bool isTileTy() const { return getTypeID() == TileTyID; }
 
   /// Return true if this type could be converted with a lossless BitCast to
@@ -280,7 +276,7 @@ public:
     // If it is not something that can have a size (e.g. a function or label),
     // it doesn't have a size.
     if (getTypeID() != StructTyID && getTypeID() != ArrayTyID &&
-        getTypeID() != VectorTyID)
+        getTypeID() != VectorTyID && getTypeID() != TileTyID)
       return false;
     // Otherwise we have to try harder to decide.
     return isSizedDerivedType(Visited);
@@ -379,6 +375,12 @@ public:
   inline unsigned getVectorNumElements() const;
   Type *getVectorElementType() const {
     assert(getTypeID() == VectorTyID);
+    return ContainedTys[0];
+  }
+
+  inline unsigned getTileNumDimensions() const;
+  Type *getTileElementType() const {
+    assert(getTypeID() == TileTyID);
     return ContainedTys[0];
   }
 

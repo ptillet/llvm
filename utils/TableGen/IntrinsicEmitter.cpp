@@ -318,7 +318,7 @@ static void EncodeFixedType(Record *R, std::vector<unsigned char> &ArgCodes,
   }
 
   case MVT::tile: {
-    Sig.push_back(VT==IIT_TILE);
+    Sig.push_back(IIT_TILE);
     Sig.push_back(R->getValueAsInt("NDim"));
     return EncodeFixedType(R->getValueAsDef("ElTy"), ArgCodes, Sig);
   }

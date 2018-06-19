@@ -30,6 +30,8 @@ set(NVPTXCodeGen_sources
   NVPTXTargetMachine.cpp
   NVPTXTargetTransformInfo.cpp
   NVPTXUtilities.cpp
+  TLVMBindLayout.cpp
+  TLVMLowerTiles.cpp
   NVVMIntrRange.cpp
   NVVMReflect.cpp
   )

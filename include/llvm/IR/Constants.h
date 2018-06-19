@@ -1304,14 +1304,14 @@ class ConstantSlice final: public Constant{
   void destroyConstantImpl();
 
 public:
-  static ConstantSlice *get(IntegerType* Ty, uint64_t Lower, uint64_t Size);
-  static ConstantSlice *get(Constant *Lower, Constant *Size);
+  static ConstantSlice *get(IntegerType* Ty, uint64_t Start, uint64_t Stride);
+  static ConstantSlice *get(Constant *Start, Constant *Stride);
 
   /// Transparently provide more efficient getOperand methods.
   DECLARE_TRANSPARENT_OPERAND_ACCESSORS(Value);
 
-  Constant *getLower() const { return (Constant*)Op<0>().get(); }
-  Constant *getSize() const  { return (Constant*)Op<1>().get(); }
+  Constant *getStart() const { return (Constant*)Op<0>().get(); }
+  Constant *getStride() const  { return (Constant*)Op<1>().get(); }
 
   /// Methods for support type inquiry through isa, cast, and dyn_cast:
   static bool classof(const Value *V) {

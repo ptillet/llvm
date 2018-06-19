@@ -1268,6 +1268,7 @@ public:
   // Basic type instances.
   Type VoidTy, LabelTy, HalfTy, FloatTy, DoubleTy, MetadataTy, TokenTy;
   Type X86_FP80Ty, FP128Ty, PPC_FP128Ty, X86_MMXTy;
+  Type SliceTy;
   IntegerType Int1Ty, Int8Ty, Int16Ty, Int32Ty, Int64Ty, Int128Ty;
   
   /// TypeAllocator - All dynamically allocated types are allocated from this.
@@ -1283,11 +1284,9 @@ public:
   StringMap<StructType*> NamedStructTypes;
   unsigned NamedStructTypesUniqueID = 0;
 
-  DenseMap<Constant*, SliceType*> SliceTypes;
   DenseMap<std::pair<Type *, uint64_t>, ArrayType*> ArrayTypes;
   DenseMap<std::pair<Type *, unsigned>, VectorType*> VectorTypes;
   DenseMap<std::pair<Type *, unsigned>, TileType*> TileTypes;
-  DenseMap<Type*, TensorType*> TensorTypes;
 
   DenseMap<Type*, PointerType*> PointerTypes;  // Pointers in AddrSpace = 0
   DenseMap<std::pair<Type*, unsigned>, PointerType*> ASPointerTypes;

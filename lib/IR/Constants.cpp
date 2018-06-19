@@ -2949,45 +2949,45 @@ Instruction *ConstantExpr::getAsInstruction() {
 //===----------------------------------------------------------------------===//
 //                ConstantSlice implementations
 
-ConstantSlice::ConstantSlice(Constant *Low, Constant *Size)
-  : Constant(SliceType::get(Size), ConstantSliceVal, &Op<0>(), 2){
-  setOperand(0, Low);
-  setOperand(1, Size);
+ConstantSlice::ConstantSlice(Constant *Start, Constant *Stride)
+  : Constant(Type::getSliceTy(Start->getContext()), ConstantSliceVal, &Op<0>(), 2){
+  setOperand(0, Start);
+  setOperand(1, Stride);
 }
 
 
 Value * ConstantSlice::handleOperandChangeImpl(Value *From, Value *To){
-  Constant * Lower = getLower();
-  Constant * Size = getSize();
+  Constant * Start = getStart();
+  Constant * Stride = getStride();
   LLVMContextImpl *CImpl = getContext().pImpl;
 
-  if(From == Lower)
-    Lower = cast<Constant>(To);
+  if(From == Start)
+    Start = cast<Constant>(To);
   else{
-    assert(From == Size && "From does not match any operand");
-    Size = cast<Constant>(To);
+    assert(From == Stride && "From does not match any operand");
+    Stride = cast<Constant>(To);
   }
 
-  ConstantSlice *&Entry = CImpl->ConstantSlices[std::make_pair(Lower, Size)];
+  ConstantSlice *&Entry = CImpl->ConstantSlices[std::make_pair(Start, Stride)];
   if(Entry)
     return Entry;
 
-  CImpl->ConstantSlices.erase(std::make_pair(getLower(), getSize()));
+  CImpl->ConstantSlices.erase(std::make_pair(getStart(), getStride()));
   Entry = this;
-  setOperand(0, Lower);
-  setOperand(1, Size);
+  setOperand(0, Start);
+  setOperand(1, Stride);
   return nullptr;
 }
 
 void ConstantSlice::destroyConstantImpl(){
-  getContext().pImpl->ConstantSlices.erase(std::make_pair(getLower(), getSize()));
+  getContext().pImpl->ConstantSlices.erase(std::make_pair(getStart(), getStride()));
 }
 
-ConstantSlice * ConstantSlice::get(Constant *Lower, Constant *Size){
-  LLVMContextImpl *CImpl = Lower->getContext().pImpl;
-  ConstantSlice *&Entry = CImpl->ConstantSlices[std::make_pair(Lower, Size)];
+ConstantSlice * ConstantSlice::get(Constant *Start, Constant *Size){
+  LLVMContextImpl *CImpl = Start->getContext().pImpl;
+  ConstantSlice *&Entry = CImpl->ConstantSlices[std::make_pair(Start, Size)];
   if (!Entry)
-    Entry = new ConstantSlice(Lower, Size);
+    Entry = new ConstantSlice(Start, Size);
   return Entry;
 }
 

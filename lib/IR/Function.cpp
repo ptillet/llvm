@@ -581,6 +581,9 @@ static std::string getMangledTypeStr(Type* Ty) {
   } else if (isa<VectorType>(Ty)) {
     Result += "v" + utostr(Ty->getVectorNumElements()) +
       getMangledTypeStr(Ty->getVectorElementType());
+  } else if(TileType *TT = dyn_cast<TileType>(Ty)) {
+    Result += "t" + utostr(TT->getNumDimensions()) +
+        getMangledTypeStr(TT->getElementType());
   } else if (Ty) {
     switch (Ty->getTypeID()) {
     default: llvm_unreachable("Unhandled type");
@@ -758,6 +761,11 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
   case IIT_SLICE:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Slice, 0));
     return;
+  case IIT_TILE:
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Tile,
+                                             Infos[NextElt++]));
+    DecodeIITType(NextElt, Infos, OutputTable);
+    return;
   case IIT_PTR:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Pointer, 0));
     DecodeIITType(NextElt, Infos, OutputTable);
@@ -892,6 +900,8 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
 
   case IITDescriptor::Integer:
     return IntegerType::get(Context, D.Integer_Width);
+  case IITDescriptor::Tile:
+    return TileType::get(DecodeFixedType(Infos, Tys, Context), D.Tile_NDim);
   case IITDescriptor::Vector:
     return VectorType::get(DecodeFixedType(Infos, Tys, Context),D.Vector_Width);
   case IITDescriptor::Pointer:

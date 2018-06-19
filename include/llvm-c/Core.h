@@ -156,7 +156,6 @@ typedef enum {
   LLVMX86_MMXTypeKind,     /**< X86 MMX */
   LLVMTokenTypeKind,       /**< Tokens */
   LLVMSliceTypeKind,       /**< TLVM Slice */
-  LLVMTensorTypeKind,      /**< TLVM Tensor */
   LLVMTileTypeKind         /**< TLVM Tile */
 } LLVMTypeKind;
 

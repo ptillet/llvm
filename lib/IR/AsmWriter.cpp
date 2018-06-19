@@ -562,6 +562,7 @@ void TypePrinting::print(Type *Ty, raw_ostream &OS) {
   case Type::MetadataTyID:  OS << "metadata"; return;
   case Type::X86_MMXTyID:   OS << "x86_mmx"; return;
   case Type::TokenTyID:     OS << "token"; return;
+  case Type::SliceTyID:     OS << "slice"; return;
   case Type::IntegerTyID:
     OS << 'i' << cast<IntegerType>(Ty)->getBitWidth();
     return;
@@ -620,6 +621,13 @@ void TypePrinting::print(Type *Ty, raw_ostream &OS) {
     OS << "<" << PTy->getNumElements() << " x ";
     print(PTy->getElementType(), OS);
     OS << '>';
+    return;
+  }
+  case Type::TileTyID: {
+    TileType *TTy = cast<TileType>(Ty);
+    OS << "[<";
+    print(TTy->getElementType(), OS);
+    OS << ">^" << TTy->getNumDimensions() << "]";
     return;
   }
   }

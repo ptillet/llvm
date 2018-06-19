@@ -279,6 +279,7 @@ Type *EVT::getTypeForEVT(LLVMContext &Context) const {
 /// pointers as MVT::iPTR.  If HandleUnknown is true, unknown types are returned
 /// as Other, otherwise they are invalid.
 MVT MVT::getVT(Type *Ty, bool HandleUnknown){
+  printf("%d\n", Ty->getTypeID());
   switch (Ty->getTypeID()) {
   default:
     if (HandleUnknown) return MVT(MVT::Other);
