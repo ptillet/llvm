@@ -309,6 +309,8 @@ public:
   Type *getScalarType() const {
     if (isVectorTy())
       return getVectorElementType();
+    if (isTileTy())
+      return getTileElementType();
     return const_cast<Type*>(this);
   }
 

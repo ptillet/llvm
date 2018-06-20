@@ -19,11 +19,31 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/raw_ostream.h"
 
 #define TLVM_BIND_LAYOUT_FUNCTION "__tlvm_lower_tiles"
 #define DEBUG_TYPE "tlvm-lower-tiles"
 
 namespace llvm {
+
+// Iteration over range
+template<class IteratorTy>
+void dynloop(IteratorTy bound_begin, IteratorTy bound_end, std::function<void(ArrayRef<size_t>)> doWork){
+  size_t depth = std::distance(bound_begin, bound_end);
+  std::vector<size_t> Idx(depth, 0);
+  size_t i = 0;
+  while(true){
+    doWork(ArrayRef<size_t>(Idx.data(), Idx.size()));
+    Idx[0]++;
+    while(Idx[i] == *(bound_begin + i)){
+      if(i == depth - 1)
+        return;
+      Idx[i++] = 0;
+      Idx[i]++;
+    }
+  }
+}
+
 
 // Tile Lowering pass
 class LoweredTypeImpl{
@@ -64,18 +84,12 @@ public:
     return Values[LinearizeIdx(Idx.begin(), Idx.end(), Strides.begin())];
   }
 
-  void forEach(std::function<Value *(size_t)> Fn){
-    for(size_t i = 0; i < PerThread[0]; i++)
-      setValue({i}, Fn(i));
+  SmallVector<unsigned, 4>::const_iterator perthread_begin() const{
+    return PerThread.begin();
   }
 
-  void forEach(std::function<void (Value *)> Fn){
-    for(size_t i = 0; i < PerThread[0]; i++)
-      Fn(getValue({i}));
-  }
-
-  unsigned perThread(unsigned Idx){
-    return PerThread[Idx];
+  SmallVector<unsigned, 4>::const_iterator perthread_end() const{
+    return PerThread.end();
   }
 
 private:
@@ -102,14 +116,13 @@ private:
 // Tiles lowering pass
 class TLVMLowerTiles: public FunctionPass {
   DenseMap<Value *, LoweredTypeImpl *> Impls;
-  LoweredTypeImpl *makeImpl(Value *V, const TLVMLayout &L);
-  static inline bool isLowered(Value * V);
+  LoweredTypeImpl *makeImpl(Value *V, const TLVMLayout *L);
 
-  void lowerSliceIntrinsic(Instruction *I, Intrinsic::ID ID, LoweredSlice *Impl, llvm::IRBuilder<> &Builder);
-  void lowerTileIntrinsic(Instruction *I, Intrinsic::ID ID, LoweredTile *Impl, llvm::IRBuilder<> &Builder);
-  void lowerLoad(LoadInst *I, LoweredTile *Impl, llvm::IRBuilder<> &Builder);
-  void lowerStore(StoreInst *I, llvm::IRBuilder<> &Builder);
-  void lowerInstruction(Instruction *I, TLVMBindLayout &Layouts, llvm::IRBuilder<> &Builder);
+  bool lowerSliceIntrinsic(Instruction *I, Intrinsic::ID ID, LoweredSlice *Impl, llvm::IRBuilder<> &Builder);
+  bool lowerTileIntrinsic(Instruction *I, Intrinsic::ID ID, LoweredTile *Impl, llvm::IRBuilder<> &Builder);
+  bool lowerLoad(LoadInst *I, LoweredTile *Impl, llvm::IRBuilder<> &Builder);
+  bool lowerStore(StoreInst *I, llvm::IRBuilder<> &Builder);
+  bool lowerBinary(BinaryOperator *I, LoweredTile *Impl, llvm::IRBuilder<> &Builder);
 
 public:
   static char ID;
@@ -120,17 +133,17 @@ public:
   bool runOnFunction(Function &F) override;
 };
 
-bool TLVMLowerTiles::isLowered(Value * V){
-  Type::TypeID TyID = V->getType()->getTypeID();
-  return TyID == Type::TileTyID || TyID == Type::SliceTyID;
-}
 
-LoweredTypeImpl *TLVMLowerTiles::makeImpl(Value *V, const TLVMLayout &L){
-  switch(V->getType()->getTypeID()){
+LoweredTypeImpl *TLVMLowerTiles::makeImpl(Value *V, const TLVMLayout *L){
+  Type *Ty = V->getType();
+  Type::TypeID TyID = Ty->getTypeID();
+  if(Ty->isPointerTy())
+    TyID = Ty->getPointerElementType()->getTypeID();
+  switch(TyID){
   case llvm::Type::TileTyID:
-    return Impls.insert({V, new LoweredTile(L)}).first->second;
+    return Impls.insert({V, new LoweredTile(*L)}).first->second;
   case llvm::Type::SliceTyID:
-    return Impls.insert({V, new LoweredSlice(L)}).first->second;
+    return Impls.insert({V, new LoweredSlice(*L)}).first->second;
   default:
     return nullptr;
   }
@@ -141,7 +154,7 @@ void TLVMLowerTiles::getAnalysisUsage(AnalysisUsage &AU) const{
   AU.setPreservesAll();
 }
 
-void TLVMLowerTiles::lowerSliceIntrinsic(Instruction *I, Intrinsic::ID ID,
+bool TLVMLowerTiles::lowerSliceIntrinsic(Instruction *I, Intrinsic::ID ID,
                                         LoweredSlice *Impl, llvm::IRBuilder<> &Builder){
   switch(ID){
   // Read Slice
@@ -149,85 +162,103 @@ void TLVMLowerTiles::lowerSliceIntrinsic(Instruction *I, Intrinsic::ID ID,
     Function *read_tid = llvm::Intrinsic::getDeclaration(I->getModule(),
                                llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x);
     Impl->setStart(Builder.CreateCall(read_tid, {}));
-    break;
+    return true;
   }
 
   default:
-    break;
+    return false;
   }
 }
 
-void TLVMLowerTiles::lowerTileIntrinsic(Instruction *I, Intrinsic::ID ID,
+bool TLVMLowerTiles::lowerTileIntrinsic(Instruction *I, Intrinsic::ID ID,
                                         LoweredTile *Impl, llvm::IRBuilder<> &Builder){
   switch(ID){
   // GetTilePtr
-  case Intrinsic::tlvm_gtp_1d:
-    Impl->forEach([&](size_t Idx){
-      Value *Ptr = I->getOperand(0);
-      Value *Slice = I->getOperand(1);
-      Value *Start = static_cast<LoweredSlice*>(Impls.lookup(Slice))->getStart();
-      Value *_Idx = ConstantInt::get(Type::getInt32Ty(I->getContext()), Idx);
-      Value *X = Builder.CreateGEP(Ptr, Builder.CreateAdd(Start, _Idx));
-      return X;
+  case Intrinsic::tlvm_gtp_1d:{
+    Value *Ptr = I->getOperand(0);
+    Value *Slice = I->getOperand(1);
+    Value *Start = static_cast<LoweredSlice*>(Impls.lookup(Slice))->getStart();
+    dynloop(Impl->perthread_begin(), Impl->perthread_end(),
+            [&](ArrayRef<size_t> Idx){
+      Value *_Idx = ConstantInt::get(Type::getInt32Ty(I->getContext()), Idx[0]);
+      Impl->setValue(Idx, Builder.CreateGEP(Ptr, Builder.CreateAdd(Start, _Idx)));
     });
-    break;
+    return true;
+  }
 
   default:
-    break;
+    return false;
   }
 }
 
-void TLVMLowerTiles::lowerLoad(LoadInst *I, LoweredTile *Impl, llvm::IRBuilder<> &Builder){
-  Impl->forEach([&](size_t Idx){
-    Value *Ptr = I->getPointerOperand();
-    LoweredTile *PtrImpl = static_cast<LoweredTile *>(Impls.lookup(Ptr));
-    return Builder.CreateLoad(PtrImpl->getValue(Idx), I->isVolatile());
+bool TLVMLowerTiles::lowerLoad(LoadInst *I, LoweredTile *Impl, llvm::IRBuilder<> &Builder){
+  Value *Ptr = I->getPointerOperand();
+  LoweredTile *PtrImpl = static_cast<LoweredTile *>(Impls.lookup(Ptr));
+  dynloop(Impl->perthread_begin(), Impl->perthread_end(),
+          [&](ArrayRef<size_t> Idx){
+    Impl->setValue(Idx, Builder.CreateLoad(PtrImpl->getValue(Idx), I->isVolatile()));
   });
+  return true;
 }
 
-void TLVMLowerTiles::lowerStore(StoreInst *I, llvm::IRBuilder<> &Builder){
+bool TLVMLowerTiles::lowerStore(StoreInst *I, llvm::IRBuilder<> &Builder){
   Value *Ptr = I->getPointerOperand();
   Value *V = I->getValueOperand();
   LoweredTile *PtrImpl = static_cast<LoweredTile *>(Impls.lookup(Ptr));
   LoweredTile *VImpl = static_cast<LoweredTile *>(Impls.lookup(V));
-  for(unsigned Idx = 0; Idx < VImpl->perThread(0); ++Idx)
+  dynloop(VImpl->perthread_begin(), VImpl->perthread_end(),
+          [&](ArrayRef<size_t> Idx){
     Builder.CreateStore(VImpl->getValue(Idx), PtrImpl->getValue(Idx), I->isVolatile());
+  });
+  return true;
 }
 
-void TLVMLowerTiles::lowerInstruction(Instruction *I, TLVMBindLayout & Layouts, llvm::IRBuilder<> &Builder){
-  if(!isLowered(I))
-    return;
-  Builder.SetInsertPoint(I);
-  LoweredTypeImpl *Impl = makeImpl(I, Layouts.get(I));
-  // Lower intrinsics
-  if(CallInst *Call = dyn_cast<CallInst>(I)){
-    Function *Callee = Call->getCalledFunction();
-    Intrinsic::ID IntrID = Callee->getIntrinsicID();
-    lowerSliceIntrinsic(Call, IntrID, (LoweredSlice *)Impl, Builder);
-    lowerTileIntrinsic(Call, IntrID, (LoweredTile *)Impl, Builder);
-  }
-  // Load
-  if(LoadInst *Load = dyn_cast<LoadInst>(I))
-    lowerLoad(Load, (LoweredTile *)Impl, Builder);
-  // Store
-  if(StoreInst *Store = dyn_cast<StoreInst>(I))
-    lowerStore(Store, Builder);
-  // Replace uses
-  for(auto &U: I->uses()){
-    if(U.get() != I){
-    printf("%d", U.get());
-    lowerInstruction((Instruction *)U.get(), Layouts, Builder);
-    }
-  }
+bool TLVMLowerTiles::lowerBinary(BinaryOperator *I, LoweredTile *Impl, llvm::IRBuilder<> &Builder){
+  Value *LHS = I->getOperand(0);
+  Value *RHS = I->getOperand(1);
+  LoweredTile *LImpl = static_cast<LoweredTile *>(Impls.lookup(LHS));
+  LoweredTile *RImpl = static_cast<LoweredTile *>(Impls.lookup(RHS));
+  dynloop(Impl->perthread_begin(), Impl->perthread_end(),
+          [&](ArrayRef<size_t> Idx){
+    Impl->setValue(Idx, Builder.CreateBinOp(I->getOpcode(), LImpl->getValue(Idx), RImpl->getValue(Idx)));
+  });
+  return true;
 }
 
 
 bool TLVMLowerTiles::runOnFunction(Function &F){
   TLVMBindLayout &Layouts = getAnalysis<TLVMBindLayout>();
   llvm::IRBuilder<> Builder(F.getContext());
+  std::vector<Instruction *> toDelete;
   for(Function::iterator::value_type &BB: F)
-  for(BasicBlock::iterator::value_type &I : BB)
-    lowerInstruction(&I, Layouts, Builder);
+  for(BasicBlock::iterator::value_type &I : BB){
+    Builder.SetInsertPoint(&I);
+    LoweredTypeImpl *Impl = makeImpl(&I, Layouts.get(&I));
+
+    bool Lowered = false;
+    // Lower intrinsics
+    if(CallInst *Call = dyn_cast<CallInst>(&I)){
+      Function *Callee = Call->getCalledFunction();
+      Intrinsic::ID IntrID = Callee->getIntrinsicID();
+      Lowered |= lowerSliceIntrinsic(Call, IntrID, (LoweredSlice *)Impl, Builder);
+      Lowered |= lowerTileIntrinsic(Call, IntrID, (LoweredTile *)Impl, Builder);
+    }
+    if(LoadInst *Load = dyn_cast<LoadInst>(&I)){
+      Lowered |= lowerLoad(Load, (LoweredTile *)Impl, Builder);
+    }
+    if(StoreInst *Store = dyn_cast<StoreInst>(&I)){
+      Lowered |= lowerStore(Store, Builder);
+    }
+    if(BinaryOperator *BinOp = dyn_cast<BinaryOperator>(&I)){
+      Lowered |= lowerBinary(BinOp, (LoweredTile *)Impl, Builder);
+    }
+
+    // Delete lowered instruction
+    if(Lowered) toDelete.push_back(&I);
+  }
+
+  for(auto It = toDelete.rbegin(); It != toDelete.rend(); ++It)
+    (*It)->eraseFromParent();
 
   return true;
 }

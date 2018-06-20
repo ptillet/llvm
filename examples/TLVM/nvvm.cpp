@@ -54,10 +54,11 @@ int main(){
     // First basic block
     llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry", F);
     builder.SetInsertPoint(block);
-    llvm::Value* sx = builder.CreateCall(read_slice_x);
-    llvm::CallInst* ptr = builder.CreateCall(gtp, {arguments[0], sx});
-    llvm::Value* tile = builder.CreateLoad(ptr);
-    builder.CreateStore(tile, ptr);
+    llvm::Value* _1 = builder.CreateCall(read_slice_x);
+    llvm::CallInst* _2 = builder.CreateCall(gtp, {arguments[0], _1});
+    llvm::Value* _3 = builder.CreateLoad(_2);
+    llvm::Value* _4 = builder.CreateAdd(_3, _3);
+    builder.CreateStore(_4, _2);
     builder.CreateRet(NULL);
 
 
@@ -87,3 +88,14 @@ int main(){
     std::string sources(buffer.begin(), buffer.end());
     std::cout << sources << std::endl;
 }
+
+//    llvm::Function* fn = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::nvvm_read_ptx_sreg_tid_x);
+//    llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "entry", F);
+//    builder.SetInsertPoint(block);
+//    llvm::Value* _1 = llvm::ConstantInt::get(int32_t, 1);
+//    llvm::Value* _tid = builder.CreateSExt(builder.CreateCall(fn), int32_t);
+//    llvm::Value* _arg = builder.CreatePtrToInt(arguments[0], int32_t);
+//    llvm::Value* _ptr = builder.CreateAdd(_arg, _tid);
+//    llvm::PointerType* ptr_t = llvm::Type::getInt32PtrTy(context, 1);
+//    llvm::Value* _addr = builder.CreateIntToPtr(_ptr, ptr_t);
+//    builder.CreateStore(_1, _addr);

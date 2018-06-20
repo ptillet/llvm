@@ -84,15 +84,20 @@ bool TLVMBindLayout::runOnFunction(Function &F){
     if(LoadInst *Load = dyn_cast<LoadInst>(&I)){
       Layouts.insert({Load, *getOperandLayout(Load, 0)}).second;
     }
+
+    // Binary
+    if(BinaryOperator *BinOp = dyn_cast<BinaryOperator>(&I))
+      Layouts.insert({BinOp, *getOperandLayout(BinOp, 0)}).second;
   }
   }
   return false;
 }
 
-TLVMLayout & TLVMBindLayout::get(Value *I){
+TLVMLayout * TLVMBindLayout::get(Value *I){
   auto It = Layouts.find(I);
-  assert(It != Layouts.end() && "Layout not found by analysis");
-  return It->second;
+  if(It != Layouts.end())
+    return &It->second;
+  return nullptr;
 }
 
 char TLVMBindLayout::ID = 1;

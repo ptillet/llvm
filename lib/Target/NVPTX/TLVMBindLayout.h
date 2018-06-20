@@ -71,7 +71,7 @@ public:
   ~TLVMBindLayout();
 
   bool runOnFunction(Function &F) override;
-  TLVMLayout &get(Value *I);
+  TLVMLayout *get(Value *I);
 };
 
 }
