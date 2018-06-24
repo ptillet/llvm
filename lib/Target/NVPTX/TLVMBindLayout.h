@@ -46,9 +46,9 @@ public:
   template<typename ... T>
   TLVMLayout(T... Axs): Axes({Axs...}){ }
 
-  unsigned numAxes() const { return Axes.size(); }
-  AxesType::const_iterator axis_begin() const { return Axes.begin(); }
-  AxesType::const_iterator axis_end() const { return Axes.end(); }
+  ArrayRef<Axis*> getAxes() const {
+    return ArrayRef<Axis*>(Axes.begin(), Axes.size());
+  }
 
 private:
   AxesType Axes;

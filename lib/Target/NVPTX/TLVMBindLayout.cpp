@@ -43,7 +43,7 @@ TLVMLayout* TLVMBindLayout::getOperandLayout(User *I, unsigned Idx){
 }
 
 Axis* TLVMBindLayout::getOperandAxis(User *I, unsigned Idx, unsigned Ax){
-  return *(getOperandLayout(I, Idx)->axis_begin() + Ax);
+  return getOperandLayout(I, Idx)->getAxes()[Ax];
 }
 
 Axis* TLVMBindLayout::makeAxis(unsigned WarpSize, unsigned NumWarp, unsigned Repeat){

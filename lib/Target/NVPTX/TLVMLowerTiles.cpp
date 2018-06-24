@@ -26,9 +26,10 @@
 
 namespace llvm {
 
-// Iteration over range
-template<class IteratorTy>
-void dynloop(IteratorTy bound_begin, IteratorTy bound_end, std::function<void(ArrayRef<size_t>)> doWork){
+// Iteration over dynamic number of ranges
+template<class ItTy>
+void dynloop(ItTy bound_begin, ItTy bound_end,
+             std::function<void(ArrayRef<size_t>)> doWork){
   size_t depth = std::distance(bound_begin, bound_end);
   std::vector<size_t> Idx(depth, 0);
   size_t i = 0;
@@ -44,9 +45,21 @@ void dynloop(IteratorTy bound_begin, IteratorTy bound_end, std::function<void(Ar
   }
 }
 
+void dynloop(ArrayRef<unsigned> Bounds, std::function<void(ArrayRef<size_t>)> doWork){
+  dynloop(Bounds.begin(), Bounds.end(), doWork);
+}
+
 // Lowered Tile values
 class LoweredTypeImpl{
 
+};
+
+class LoweredAxis {
+
+private:
+  Value *id_;
+  Value *wid_;
+  Value *idw_;
 };
 
 class LoweredTile: public LoweredTypeImpl {
@@ -62,9 +75,9 @@ class LoweredTile: public LoweredTypeImpl {
 
 public:
   LoweredTile(const TLVMLayout &L)
-   : Layout(L), PerThread(L.numAxes()), Strides(L.numAxes(), 1) {
+   : Layout(L), PerThread(L.getAxes().size()), Strides(L.getAxes().size(), 1) {
     // Number of values per thread
-    std::transform(L.axis_begin(), L.axis_end(), PerThread.begin(),
+    std::transform(L.getAxes().begin(), L.getAxes().end(), PerThread.begin(),
                    [](Axis* Ax){ return Ax->PerThread; });
     // Linearized values array
     Values.resize(std::accumulate(PerThread.begin(), PerThread.end(), 1,
@@ -74,6 +87,7 @@ public:
                      std::multiplies<int>());
   }
 
+
   void setValue(ArrayRef<size_t> Idx, Value *V){
     Values[LinearizeIdx(Idx.begin(), Idx.end(), Strides.begin())] = V;
   }
@@ -82,17 +96,15 @@ public:
     return Values[LinearizeIdx(Idx.begin(), Idx.end(), Strides.begin())];
   }
 
-  SmallVector<unsigned, 4>::const_iterator perthread_begin() const{
-    return PerThread.begin();
+  ArrayRef<unsigned> getPerThread() const{
+    return ArrayRef<unsigned>(PerThread.data(), PerThread.size());
   }
 
-  SmallVector<unsigned, 4>::const_iterator perthread_end() const{
-    return PerThread.end();
-  }
 
 private:
   const TLVMLayout &Layout;
-  SmallVector<Value *, 16> Values;
+  SmallVector<LoweredAxis*, 4> Axes;
+  SmallVector<Value*, 16> Values;
   SmallVector<unsigned, 4> PerThread;
   SmallVector<unsigned, 4> Strides;
 };
@@ -113,6 +125,7 @@ private:
 
 // Tiles lowering pass
 class TLVMLowerTiles: public FunctionPass {
+  DenseMap<Axis *, LoweredAxis*> Axes;
   DenseMap<Value *, LoweredTile*> Tiles;
   DenseMap<Value *, LoweredSlice*> Slices;
 
@@ -178,8 +191,7 @@ bool TLVMLowerTiles::lowerTileIntrinsic(Instruction *I, Intrinsic::ID ID,
     Value *Ptr = I->getOperand(0);
     Value *Slice = I->getOperand(1);
     Value *Start = Slices.lookup(Slice)->getStart();
-    dynloop(Impl->perthread_begin(), Impl->perthread_end(),
-            [&](ArrayRef<size_t> Idx){
+    dynloop(Impl->getPerThread(), [&](ArrayRef<size_t> Idx){
       Value *_Idx = ConstantInt::get(Type::getInt32Ty(I->getContext()), Idx[0]);
       Impl->setValue(Idx, Builder.CreateGEP(Ptr, Builder.CreateAdd(Start, _Idx)));
     });
@@ -195,8 +207,7 @@ bool TLVMLowerTiles::lowerLoad(LoadInst *I, LoweredTile *Impl, llvm::IRBuilder<>
   // Tile of pointers
   LoweredTile *Ptr = Tiles.lookup(I->getPointerOperand());
   // Iterate
-  dynloop(Impl->perthread_begin(), Impl->perthread_end(),
-          [&](ArrayRef<size_t> Idx){
+  dynloop(Impl->getPerThread(), [&](ArrayRef<size_t> Idx){
     Impl->setValue(Idx, Builder.CreateLoad(Ptr->getValue(Idx), I->isVolatile()));
   });
   return true;
@@ -207,8 +218,7 @@ bool TLVMLowerTiles::lowerStore(StoreInst *I, llvm::IRBuilder<> &Builder){
   LoweredTile *Ptr = Tiles.lookup(I->getPointerOperand());
   LoweredTile *V = Tiles.lookup(I->getValueOperand());
   // Iterate over input tile
-  dynloop(V->perthread_begin(), V->perthread_end(),
-          [&](ArrayRef<size_t> Idx){
+  dynloop(V->getPerThread(), [&](ArrayRef<size_t> Idx){
     Builder.CreateStore(V->getValue(Idx), Ptr->getValue(Idx), I->isVolatile());
   });
   return true;
@@ -219,8 +229,7 @@ bool TLVMLowerTiles::lowerBinary(BinaryOperator *I, LoweredTile *Impl, llvm::IRB
   LoweredTile *LHS = Tiles.lookup(I->getOperand(0));
   LoweredTile *RHS = Tiles.lookup(I->getOperand(1));
   // Iterate
-  dynloop(Impl->perthread_begin(), Impl->perthread_end(),
-          [&](ArrayRef<size_t> Idx){
+  dynloop(Impl->getPerThread(), [&](ArrayRef<size_t> Idx){
     Impl->setValue(Idx, Builder.CreateBinOp(I->getOpcode(), LHS->getValue(Idx), RHS->getValue(Idx)));
   });
   return true;
@@ -255,7 +264,8 @@ bool TLVMLowerTiles::runOnFunction(Function &F){
     }
 
     // Delete lowered instruction
-    if(Lowered) toDelete.push_back(&I);
+    if(Lowered)
+      toDelete.push_back(&I);
   }
 
   for(auto It = toDelete.rbegin(); It != toDelete.rend(); ++It)
